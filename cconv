@@ -1,0 +1,74 @@
+#!/usr/bin/env python
+
+import sys
+import urllib
+import os
+import string
+import datetime
+
+
+class currencyTable:
+	"""Table with currencies, their rates and names"""
+	def __init__(self, url, forceRefresh = False):
+		self.url = url
+		self.tmpFile = '{}/{}.txt'.format(defaultPath, datetime.date.today())
+		self.forceRefresh = forceRefresh
+		self.table = {}
+		self.names = {}
+		print self.url
+
+	def downloadTable(self):
+		"""Download the table from the path"""
+		if self.forceRefresh or not (os.path.exists(self.tmpFile)):
+			urllib.urlretrieve(self.url, self.tmpFile)
+
+	def parseTable(self):
+		"""Parse the table according to the pattern 
+		Country|Currency Name|Amount|Symbol|Rate"""
+		openfile = open(self.tmpFile, 'r')
+		lines = openfile.readlines()
+		lines.append('Czech Republic|koruna|1|CZK|1')
+		del lines[0:2]
+		for line in lines:
+			vals = line.rsplit('|');
+			self.names[vals[3]] = '{} ({})'.format(vals[0], vals[1])
+			self.table[vals[3]] = float(vals[4])/float(vals[2])
+
+	def convert(self, orig, target, amount):
+		if orig in self.table and target in self.table:
+			return self.table[orig] * amount / self.table[target]
+		else:
+			sys.stderr.write('Currencies unknown\n')
+			return -1
+		
+
+def checkpath(path):
+	if not os.path.exists(path):
+		os.makedirs(path)
+
+if __name__ == '__main__':
+	today = datetime.date.today()
+	defaultPath = '/tmp/cconv'
+	defaultUrl = 'http://www.cnb.cz/en/financial_markets/foreign_exchange_market/exchange_rate_fixing/daily.txt?date={}.{}.{}'.format(today.day, today.month, today.year) 
+	checkpath(defaultPath)
+
+	table = currencyTable(defaultUrl);
+	table.downloadTable()
+	table.parseTable()
+	
+	if len(sys.argv) > 3:
+		print table.convert(sys.argv[2].upper(), sys.argv[3].upper(), float(sys.argv[1]))
+	elif len(sys.argv) > 1 and sys.argv[1] == '--list-currencies':
+		print 'Currency converter (powered by Czech National Bank)\n'
+		print '   Currencies\n'
+		for currency in sorted(table.table.keys()):
+				print '   {} - {}'.format(currency, table.names[currency])
+		print
+	else:
+		print 'Currency converter (powered by Czech National Bank)\n'
+		print '\n  Usage: cconv [ original_currency target_currency amount ]'
+		print '         cconv --list-currencies'
+		print '         cconv --help'
+
+		print '\n  Returns the amount converted or -1 if currency symbols are unknown\n'
+	pass
