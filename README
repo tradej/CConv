@@ -1,0 +1,38 @@
+*** LICENSE INFORMATION ***
+CConv - Currency Converter powered by Czech National Bank
+Copyright (C) 2011 Tomas Radej
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*** README ***
+
+This is a small program aimed at effortless commandline currency conversion.
+
+It is powered by the data provided publicly by the Czech National Bank,
+therefore I am not able to guarantee accuracy and/or availability of
+the service. However, I aim to update the program should the conditions 
+of the Czech National Bank change.
+
+This program requires a working internet connection and Python installed.
+
+Have fun, Tomas Radej
+
+*** WHAT'S NEW ***
+
+Version 0.1
+
+* Initial release
+* The program's working, even though some errors are still not being caught
+* License information and Readme
+
