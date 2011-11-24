@@ -41,6 +41,13 @@ class currencyTable:
 			sys.stderr.write('Currencies unknown\n')
 			return -1
 		
+	def listCurrencies(self):
+		print 'Currency converter (powered by Czech National Bank)\n'
+		print '   Currencies\n'
+		for currency in sorted(self.table.keys()):
+				print '   {} - {}'.format(currency, self.names[currency])
+		print
+
 
 def checkpath(path):
 	if not os.path.exists(path):
@@ -59,11 +66,7 @@ if __name__ == '__main__':
 	if len(sys.argv) > 3:
 		print table.convert(sys.argv[2].upper(), sys.argv[3].upper(), float(sys.argv[1]))
 	elif len(sys.argv) > 1 and sys.argv[1] == '--list-currencies':
-		print 'Currency converter (powered by Czech National Bank)\n'
-		print '   Currencies\n'
-		for currency in sorted(table.table.keys()):
-				print '   {} - {}'.format(currency, table.names[currency])
-		print
+		table.listCurrencies()
 	else:
 		print 'Currency converter (powered by Czech National Bank)\n'
 		print '\n  Usage: cconv [ original_currency target_currency amount ]'
