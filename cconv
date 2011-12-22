@@ -18,8 +18,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 import sys
 import urllib
+import httplib
 import os
-import datetime
+from datetime import date
+import argparse
 
 
 class CurrencyTable:
@@ -35,7 +37,10 @@ class CurrencyTable:
         """Download the table from the path"""
         if self.force_refresh or not (os.path.exists(self.tmp_file)):
             sys.stderr.write('Refreshing table\n')
-            urllib.urlretrieve(self.url, self.tmp_file)
+            result = urllib.urlretrieve(self.url, self.tmp_file)
+            if result[1].getheader('Content-Type').find('text/html') != -1:
+                os.remove(self.tmp_file)
+                raise Exception, 'Failed to retrieve data from CNB!\n'
 
     def parse_table(self):
         """Parse the table according to the pattern 
@@ -77,14 +82,14 @@ def show_help():
     print '\n  Usage: cconv [options] [ original_currency target_currency amount ]'
     print '                         Currency symbols are case insensitive'
     print '\n  Options:'
-    print '         -d --date       Specify a date to be downloaded.'
+    print '         -d --date       Specify a date to be downloaded. (DDDD-MM-YY)'
     print '         -h --help       Show this help'
     print '         -l --list       List available currencies (based on a current currency file)'
     print '         -r --refresh    Force refresh rates'
     print '\n  Notes:' 
     print '        - The currency file is automatically updated once a day upon'
     print '        first usage of the program. CNB claims that current data are available'
-    print '        after 2:30 PM every day, therefore use -r if you want to force refresh'
+    print '        after 1:30 PM GMT every day, therefore use -r if you want to force refresh'
     print '        the rates.'
     print '\n        - You can use date specification and currency listing together as'
     print '        the number of currencies listed changes in time'
@@ -95,84 +100,79 @@ def show_help():
 
 def parse_date(string):
     ''' Parses string and returns date or None. String format should be YYYY-MM-DD '''
+    if string == None:
+        return None
     try:
         year = int(string[0:4])
         month = int(string[5:7])
         day = int(string[8:10])
-        return datetime.date(year, month, day)
+        return date(year, month, day)
     except ValueError:
         return None
         
-if __name__ == '__main__':
-    DEFAULT_PATH = '/tmp/cconv'
-    USER_DATE = datetime.date.today()
-    checkpath(DEFAULT_PATH)
-    URL = ''
-    AMOUNT = 0
-    ORIGIN = ''
-    TARGET = ''
-    LIST_CURRENCIES = False
-    FORCE_REFRESH = False
+def __get_args():
+    ''' Returns a namespace with program's arguments '''
+    parser = argparse.ArgumentParser(description='Load arguments', prog='cconv')
+    parser.add_argument('amount', type=int, help='Amount to be converted', nargs='?', default=0)
+    parser.add_argument('origin', help='Original currency', nargs='?', default='')
+    parser.add_argument('target', help='Target currency', nargs='?', default='')
+    parser.add_argument('-l', '--list', action='store_const', const=True)
+    parser.add_argument('-r', '--refresh', action='store_const', const=True)
+    parser.add_argument('-d', '--date')
 
-    if len(sys.argv) == 1:
-        show_help()
-        sys.exit(0)
+    return parser.parse_args()
 
-    # Loop through arguments
-    del sys.argv[0]
-    SKIP = False
-    for arg in sys.argv:
-        if SKIP:
-            SKIP = False
-            continue
 
-        if arg[0] == '-':
-            if arg == '-h' or arg == '--help':
-                show_help()
-                sys.exit(0)
-            if arg == '-d' or arg == '--date':
-                # Needs checking index
-                USER_DATE = parse_date(sys.argv[sys.argv.index(arg)+1])
-                if USER_DATE == None:
-                    sys.stderr.write('Wrong date format: {}!\n'.format(sys.argv[sys.argv.index(arg)+1]))
-                    sys.exit(1)
-                SKIP = True
-                continue
-            elif arg == '-l' or arg == '--list':
-                LIST_CURRENCIES = True
-                break
-            elif arg == '-r' or arg == '--refresh':
-                print 'Refresh'
-                FORCE_REFRESH = True
-            else:
-                sys.stderr.write('Unrecognized switch!\n')
-                show_help()
-                sys.exit(1)
+def __get_table(url, forceRefresh):
+    ''' Get a table with a correspondent URL '''
+    table = CurrencyTable(url, forceRefresh)
+
+    try:
+        table.download_table()
+    except Exception as e:
+        sys.stderr.write('{0}'.format(e))
+        sys.exit(-1)
+
+    table.parse_table()
+    return table
+
+
+def __get_url(userDate):
+     return 'http://www.cnb.cz/en/financial_markets/foreign_exchange_market/exchange_rate_fixing/daily.txt?date={}.{}.{}'.format(userDate.day, userDate.month, userDate.year) 
+ 
+   
+def __main(args):
+    ''' Main method '''
+    userDate = date.today()
+    if args.date != None:
+        if parse_date(args.date): 
+            userDate = parse_date(args.date) 
         else:
-            try:
-                AMOUNT = float(arg)
-            except ValueError:
-                if not ORIGIN == '':
-                    TARGET = arg
-                else:
-                    ORIGIN = arg
-            
-    URL = 'http://www.cnb.cz/en/financial_markets/foreign_exchange_market/exchange_rate_fixing/daily.txt?date={}.{}.{}'.format(USER_DATE.day, USER_DATE.month, USER_DATE.year) 
-    if not LIST_CURRENCIES:
-        if AMOUNT == 0:
+            sys.stderr.write('Wrong date format (YYYY-MM-DD expected)!\n')
+            sys.exit(-1)
+
+
+    # Parsing arguments
+    url = __get_url(userDate)
+    table = __get_table(url, args.refresh)
+
+    if args.list:
+        table.list_currencies()
+    else:
+        if args.amount == 0:
             sys.stderr.write('No amount specified!\n')
             sys.exit(-1)
-        if ORIGIN == '' or TARGET == '':
+        if args.origin == '' or args.target == '':
             sys.stderr.write('You must specify the original and target currency!\n')
             sys.exit(1)
-
-    TABLE = CurrencyTable(URL, FORCE_REFRESH)
-    TABLE.download_table()
-    TABLE.parse_table()
-
-    if LIST_CURRENCIES:
-        TABLE.list_currencies()
-    else:
-        print TABLE.convert(ORIGIN.upper(), TARGET.upper(), AMOUNT)
     
-
+        print table.convert(args.origin.upper(), args.target.upper(), args.amount)
+ 
+ 
+if __name__ == '__main__':
+    DEFAULT_PATH = '/tmp/cconv'
+    checkpath(DEFAULT_PATH)
+    
+    args = __get_args()
+    __main(args)
+    pass

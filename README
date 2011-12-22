@@ -30,9 +30,34 @@ Have fun, Tomas Radej
 
 *** WHAT'S NEW ***
 
-Version 0.1
+    Version 0.1.1
+    
+    * Date parsing now works correctly
+    * Fixed behavior when data is unavailable
+    
+    Version 0.1
 
-* Initial release
-* The program's working, even though some errors are still not being caught
-* License information and Readme
+    * Initial release
+    * The program's working, even though some errors are still not being caught
+    * License information and Readme
+    
+
+*** ROADPLAN ***
+
+    * Handling of malformed input files
+    * Program stabilizing on older versions of Python
+    * Working with user-provided data
+    * Config file
+    * Ensuring multi-platform usability
+    * Replacing code with library functions
+
+
+*** KNOWN ISSUES ***
+
+    * Under Windows, the temp file is stored in Drive:/tmp/cconv instead
+      of the proper Drive:/Temp/cconv 
+    * Acts weird under Python 2.6
+    * Help file is not that helpful
+    * Some of the sheets provided by the bank have errors in them, currently
+      the program crashes on such occurence.
 
