@@ -22,37 +22,43 @@ import httplib
 import os
 from datetime import date
 import argparse
+from decimal import *
 
 
 class CurrencyTable:
-    """Table with currencies, their rates and names"""
+    '''Table with currencies, their rates and names'''
     def __init__(self, url, force_refresh = False):
         self.url = url
+        # This method of saving files expects the URL to have a unique
+        # part in form of date after the equals sign
         self.tmp_file = '{}/{}.txt'.format(DEFAULT_PATH, url.split('=')[1])
         self.force_refresh = force_refresh
-        self.table = {}
-        self.names = {}
+        self.table = {} # Currency rates
+        self.names = {} # Currency names (used in listing currencies) 
 
     def download_table(self):
-        """Download the table from the path"""
+        '''Download the table from the path'''
         if self.force_refresh or not (os.path.exists(self.tmp_file)):
             sys.stderr.write('Refreshing table\n')
             result = urllib.urlretrieve(self.url, self.tmp_file)
+            # If a text/html is received, it's most probably an error message.
+            # Valid data is text/plain. This might need better checking.
             if result[1].getheader('Content-Type').find('text/html') != -1:
                 os.remove(self.tmp_file)
-                raise Exception, 'Failed to retrieve data from CNB!\n'
+                raise Exception, 'Failed to retrieve data from CNB!'
 
     def parse_table(self):
-        """Parse the table according to the pattern 
-        Country|Currency Name|Amount|Symbol|Rate"""
+        '''Parse the table according to the pattern 
+        Country|Currency Name|Amount|Symbol|Rate'''
         openfile = open(self.tmp_file, 'r')
         lines = openfile.readlines()
         lines.append('Czech Republic|koruna|1|CZK|1')
-        del lines[0:2]
+        del lines[0:2] # Delete table header
         for line in lines:
+            # This routine needs exception handling
             vals = line.rsplit('|')
             self.names[vals[3]] = '{} ({})'.format(vals[0], vals[1])
-            self.table[vals[3]] = float(vals[4])/float(vals[2])
+            self.table[vals[3]] = Decimal(vals[4])/Decimal(vals[2])
 
     def convert(self, orig, target, amount):
         ''' Convert given amount of original currency to target currency '''
@@ -71,66 +77,48 @@ class CurrencyTable:
         print
 
 
-def checkpath(path):
+def __checkpath(path):
     ''' Create path if not existing '''
     if not os.path.exists(path):
-        os.makedirs(path)
+        try:
+            os.makedirs(path)
+        except IOError:
+            sys.stderr.write('Can not create data directory!\n')
+            sys.exit(1)
 
-def show_help():
-    ''' Shows help message '''
-    print 'Currency converter (powered by Czech National Bank)'
-    print '\n  Usage: cconv [options] [ original_currency target_currency amount ]'
-    print '                         Currency symbols are case insensitive'
-    print '\n  Options:'
-    print '         -d --date       Specify a date to be downloaded. (DDDD-MM-YY)'
-    print '         -h --help       Show this help'
-    print '         -l --list       List available currencies (based on a current currency file)'
-    print '         -r --refresh    Force refresh rates'
-    print '\n  Notes:' 
-    print '        - The currency file is automatically updated once a day upon'
-    print '        first usage of the program. CNB claims that current data are available'
-    print '        after 1:30 PM GMT every day, therefore use -r if you want to force refresh'
-    print '        the rates.'
-    print '\n        - You can use date specification and currency listing together as'
-    print '        the number of currencies listed changes in time'
-    print '\n  Disclaimer: Program is provided as is, with no liability or claims of accuracy.'
-
-    print '\n  Returns the amount converted or -1 if currency symbols are unknown\n'
-
-
-def parse_date(string):
+def __parse_date(string):
     ''' Parses string and returns date or None. String format should be YYYY-MM-DD '''
     if string == None:
         return None
     try:
-        year = int(string[0:4])
-        month = int(string[5:7])
-        day = int(string[8:10])
-        return date(year, month, day)
-    except ValueError:
+        tokens = [int(x) for x in string.split('-')]
+        return date(tokens[0], tokens[1], tokens[2])
+    except ValueError, IndexError:
         return None
         
 def __get_args():
     ''' Returns a namespace with program's arguments '''
-    parser = argparse.ArgumentParser(description='Load arguments', prog='cconv')
-    parser.add_argument('amount', type=int, help='Amount to be converted', nargs='?', default=0)
+    parser = argparse.ArgumentParser( prog='cconv',
+        description='CConv - Currency converter (powered by the Czech National Bank)', 
+        epilog='You can select -l and -d at the same time to see what currencies were available \rat a given point in time. The data is available since 1991-01-01.\r ')
+    parser.add_argument('amount', type=Decimal, help='Amount to be converted', nargs='?', default=0)
     parser.add_argument('origin', help='Original currency', nargs='?', default='')
     parser.add_argument('target', help='Target currency', nargs='?', default='')
-    parser.add_argument('-l', '--list', action='store_const', const=True)
-    parser.add_argument('-r', '--refresh', action='store_const', const=True)
-    parser.add_argument('-d', '--date')
+    parser.add_argument('-l', '--list', action='store_const', const=True, help='List available currencies')
+    parser.add_argument('-r', '--refresh', action='store_const', const=True, help='Force refresh currency table')
+    parser.add_argument('-d', '--date', help='Select date for rates (YYYY-MM-DD format)')
 
     return parser.parse_args()
 
 
 def __get_table(url, forceRefresh):
-    ''' Get a table with a correspondent URL '''
+    ''' Get a currency table from the correspondent URL '''
     table = CurrencyTable(url, forceRefresh)
 
     try:
         table.download_table()
     except Exception as e:
-        sys.stderr.write('{0}'.format(e))
+        sys.stderr.write('{0}\n'.format(e))
         sys.exit(-1)
 
     table.parse_table()
@@ -138,21 +126,23 @@ def __get_table(url, forceRefresh):
 
 
 def __get_url(userDate):
-     return 'http://www.cnb.cz/en/financial_markets/foreign_exchange_market/exchange_rate_fixing/daily.txt?date={}.{}.{}'.format(userDate.day, userDate.month, userDate.year) 
+    ''' Returns the formatted URL of the data sheet '''
+    # This is hardcoded now, but will be moved into a config file in 
+    # some future version 
+    url = 'http://www.cnb.cz/en/financial_markets/foreign_exchange_market/exchange_rate_fixing/daily.txt?date={}.{}.{}'
+    return url.format(userDate.day, userDate.month, userDate.year) 
  
    
 def __main(args):
     ''' Main method '''
     userDate = date.today()
     if args.date != None:
-        if parse_date(args.date): 
-            userDate = parse_date(args.date) 
+        if __parse_date(args.date): 
+            userDate = __parse_date(args.date) 
         else:
             sys.stderr.write('Wrong date format (YYYY-MM-DD expected)!\n')
             sys.exit(-1)
 
-
-    # Parsing arguments
     url = __get_url(userDate)
     table = __get_table(url, args.refresh)
 
@@ -171,7 +161,7 @@ def __main(args):
  
 if __name__ == '__main__':
     DEFAULT_PATH = '/tmp/cconv'
-    checkpath(DEFAULT_PATH)
+    __checkpath(DEFAULT_PATH)
     
     args = __get_args()
     __main(args)

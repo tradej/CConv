@@ -30,6 +30,12 @@ Have fun, Tomas Radej
 
 *** WHAT'S NEW ***
 
+    Version 0.1.2
+    
+    * Changed precision from float to decimal
+    * Code documentation
+    * Minor changes
+
     Version 0.1.1
     
     * Date parsing now works correctly
@@ -47,13 +53,18 @@ Have fun, Tomas Radej
     * Handling of malformed input files
     * Program stabilizing on older versions of Python
     * Working with user-provided data
+    * Changing data folder to something like ~/.cconf
     * Config file
+    * Support for exotic currencies
     * Ensuring multi-platform usability
     * Replacing code with library functions
 
 
 *** KNOWN ISSUES ***
 
+    * You need to specify the amount of currency to convert. In future
+      versions, I want the program to assume the amount to 1 if no amount
+      is specified.
     * Under Windows, the temp file is stored in Drive:/tmp/cconv instead
       of the proper Drive:/Temp/cconv 
     * Acts weird under Python 2.6
