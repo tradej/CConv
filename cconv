@@ -31,7 +31,7 @@ class CurrencyTable:
         self.url = url
         # This method of saving files expects the URL to have a unique
         # part in form of date after the equals sign
-        self.tmp_file = '{}/{}.txt'.format(DEFAULT_PATH, url.split('=')[1])
+        self.tmp_file = '{0}/{1}.txt'.format(DEFAULT_PATH, url.split('=')[1])
         self.force_refresh = force_refresh
         self.table = {} # Currency rates
         self.names = {} # Currency names (used in listing currencies) 
@@ -57,7 +57,7 @@ class CurrencyTable:
         for line in lines:
             # This routine needs exception handling
             vals = line.rsplit('|')
-            self.names[vals[3]] = '{} ({})'.format(vals[0], vals[1])
+            self.names[vals[3]] = '{0} ({1})'.format(vals[0], vals[1])
             self.table[vals[3]] = Decimal(vals[4])/Decimal(vals[2])
 
     def convert(self, orig, target, amount):
@@ -73,7 +73,7 @@ class CurrencyTable:
         print 'Currency converter (powered by Czech National Bank)\n'
         print '   Currencies\n'
         for currency in sorted(self.table.keys()):
-            print '   {} - {}'.format(currency, self.names[currency])
+            print '   {0} - {1}'.format(currency, self.names[currency])
         print
 
 def __checkpath(path):
@@ -125,7 +125,7 @@ def __get_url(userDate):
     ''' Returns the formatted URL of the data sheet '''
     # This is hardcoded now, but will be moved into a config file in 
     # some future version 
-    url = 'http://www.cnb.cz/en/financial_markets/foreign_exchange_market/exchange_rate_fixing/daily.txt?date={}.{}.{}'
+    url = 'http://www.cnb.cz/en/financial_markets/foreign_exchange_market/exchange_rate_fixing/daily.txt?date={0}.{1}.{2}'
     return url.format(userDate.day, userDate.month, userDate.year) 
  
    
