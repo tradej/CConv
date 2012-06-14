@@ -21,7 +21,7 @@ import urllib
 import httplib
 import os
 from datetime import date
-import argparse
+import optparse
 from decimal import *
 
 
@@ -76,7 +76,6 @@ class CurrencyTable:
             print '   {} - {}'.format(currency, self.names[currency])
         print
 
-
 def __checkpath(path):
     ''' Create path if not existing '''
     if not os.path.exists(path):
@@ -98,15 +97,12 @@ def __parse_date(string):
         
 def __get_args():
     ''' Returns a namespace with program's arguments '''
-    parser = argparse.ArgumentParser( prog='cconv',
+    parser = optparse.OptionParser( prog='cconv',
         description='CConv - Currency converter (powered by the Czech National Bank)', 
         epilog='You can select -l and -d at the same time to see what currencies were available \rat a given point in time. The data is available since 1991-01-01.\r ')
-    parser.add_argument('amount', type=Decimal, help='Amount to be converted', nargs='?', default=0)
-    parser.add_argument('origin', help='Original currency', nargs='?', default='')
-    parser.add_argument('target', help='Target currency', nargs='?', default='')
-    parser.add_argument('-l', '--list', action='store_const', const=True, help='List available currencies')
-    parser.add_argument('-r', '--refresh', action='store_const', const=True, help='Force refresh currency table')
-    parser.add_argument('-d', '--date', help='Select date for rates (YYYY-MM-DD format)')
+    parser.add_option('-l', '--list', action='store_const', const=True, help='List available currencies')
+    parser.add_option('-r', '--refresh', action='store_const', const=True, help='Force refresh currency table')
+    parser.add_option('-d', '--date', help='Select date for rates (YYYY-MM-DD format)')
 
     return parser.parse_args()
 
@@ -133,36 +129,40 @@ def __get_url(userDate):
     return url.format(userDate.day, userDate.month, userDate.year) 
  
    
-def __main(args):
+def __main(options, args):
     ''' Main method '''
     userDate = date.today()
-    if args.date != None:
-        if __parse_date(args.date): 
-            userDate = __parse_date(args.date) 
+    if options.date != None:
+        if __parse_date(options.date): 
+            userDate = __parse_date(options.date) 
         else:
             sys.stderr.write('Wrong date format (YYYY-MM-DD expected)!\n')
             sys.exit(-1)
 
     url = __get_url(userDate)
-    table = __get_table(url, args.refresh)
+    table = __get_table(url, options.refresh)
 
-    if args.list:
+    if options.list:
         table.list_currencies()
     else:
-        if args.amount == 0:
+        if len(args) != 3:
+            sys.stderr.write('Wrong number of arguments (should be AMOUNT FROM TO)!\n')
+            sys.exit(-1)
+        if args[0] == 0:
             sys.stderr.write('No amount specified!\n')
             sys.exit(-1)
-        if args.origin == '' or args.target == '':
+        if args[1] == '' or args[2] == '':
             sys.stderr.write('You must specify the original and target currency!\n')
             sys.exit(1)
     
-        print table.convert(args.origin.upper(), args.target.upper(), args.amount)
+        print table.convert(args[1].upper(), args[2].upper(), Decimal(args[0]))
+        #print args
  
  
 if __name__ == '__main__':
     DEFAULT_PATH = '/tmp/cconv'
     __checkpath(DEFAULT_PATH)
     
-    args = __get_args()
-    __main(args)
+    (options, args) = __get_args()
+    __main(options, args)
     pass
